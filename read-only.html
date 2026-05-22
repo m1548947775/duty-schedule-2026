@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>值班安排表 - 只读版</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Microsoft YaHei', sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 10px; }
+        .container { max-width: 100%; margin: 0 auto; background: white; border-radius: 16px; padding: 20px; }
+        h1 { text-align: center; color: #333; margin-bottom: 20px; font-size: 1.5rem; }
+        .section { background: #f8f9fa; border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+        .section-title { font-size: 1rem; font-weight: 600; color: #333; margin-bottom: 12px; }
+        .staff-list { display: flex; flex-wrap: wrap; gap: 8px; }
+        .staff-tag { background: #667eea; color: white; padding: 6px 12px; border-radius: 16px; font-size: 13px; }
+        .calendar-container { margin-top: 16px; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; flex-wrap: wrap; gap: 10px; }
+        .calendar-nav { display: flex; align-items: center; gap: 10px; }
+        .nav-btn { width: 36px; height: 36px; border: none; border-radius: 50%; background: #f0f2f5; color: #667eea; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .nav-btn:hover { background: #667eea; color: white; }
+        .calendar-header h2 { font-size: 1.25rem; color: #333; min-width: 120px; text-align: center; }
+        .calendar-legend { display: flex; gap: 12px; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 4px; font-size: 12px; color: #666; }
+        .legend-color { width: 14px; height: 14px; border-radius: 3px; }
+        .calendar-table { width: 100%; border-collapse: collapse; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+        .calendar-table th { background: #667eea; color: white; padding: 10px 4px; text-align: center; font-weight: 600; font-size: 12px; }
+        .calendar-table td { padding: 6px 4px; text-align: center; border: 1px solid #e0e0e0; min-height: 60px; vertical-align: top; position: relative; font-size: 11px; }
+        .calendar-table .other-month { background: #f8f9fa; color: #999; }
+        .calendar-table .weekday { background: #e8f5e9; }
+        .calendar-table .saturday { background: #fff3e0; }
+        .calendar-table .sunday { background: #f5f5f5; }
+        .calendar-table .holiday { background: #ffebee; }
+        .calendar-table .makeup-work { background: #e3f2fd; }
+        .date-number { font-size: 13px; font-weight: 600; color: #333; margin-bottom: 2px; }
+        .holiday-mark { position: absolute; top: 2px; right: 2px; background: #ff4757; color: white; font-size: 9px; padding: 1px 4px; border-radius: 3px; }
+        .makeup-mark { position: absolute; top: 2px; right: 2px; background: #2196f3; color: white; font-size: 9px; padding: 1px 4px; border-radius: 3px; }
+        .staff-name-large { font-size: 14px; font-weight: 700; color: #667eea; word-break: break-word; }
+        .empty-state { text-align: center; padding: 40px 20px; color: #666; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+        .stats-card { background: linear-gradient(145deg, #ffffff, #f0f0f0); border-radius: 16px; padding: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .stats-card h3 { font-size: 0.9rem; margin-bottom: 12px; color: #333; }
+        .stats-table { width: 100%; }
+        .stats-table td { padding: 8px 6px; border-bottom: 1px solid #e0e0e0; font-size: 12px; }
+        .stats-table tr:last-child td { border-bottom: none; }
+        .stats-table .name { font-weight: 600; }
+        .stats-table .count { text-align: right; font-weight: 700; color: #667eea; }
+        .weekday-color { color: #28a745; }
+        .saturday-color { color: #fd7e14; }
+        .read-only-badge { background: #28a745; color: white; padding: 4px 10px; border-radius: 10px; font-size: 11px; margin-left: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📅 值班安排表 <span class="read-only-badge">只读版</span></h1>
+        <div class="section">
+            <div class="section-title">👥 值班人员</div>
+            <div class="staff-list"><div class="staff-tag">谢东波</div><div class="staff-tag">姚景天</div><div class="staff-tag">施化吉</div><div class="staff-tag">陈萌</div><div class="staff-tag">高超</div><div class="staff-tag">高智强</div><div class="staff-tag">孙强</div><div class="staff-tag">吴景健</div></div>
+        </div>
+        <div class="section">
+            <div class="section-title">📋 值班日历</div>
+            <div id="scheduleContainer"></div>
+        </div>
+        <div class="section">
+            <div class="section-title">📊 值班统计</div>
+            <div id="statsContainer"></div>
+        </div>
+    </div>
+    <script>
+        const staffList = ["谢东波","姚景天","施化吉","陈萌","高超","高智强","孙强","吴景健"];
+        const schedule = [{"date":"2026-03-23","dayOfWeek":"周一","type":"weekday","staff":"谢东波"},{"date":"2026-03-24","dayOfWeek":"周二","type":"weekday","staff":"施化吉"},{"date":"2026-03-25","dayOfWeek":"周三","type":"weekday","staff":"陈萌"},{"date":"2026-03-26","dayOfWeek":"周四","type":"weekday","staff":"高智强"},{"date":"2026-03-27","dayOfWeek":"周五","type":"weekday","staff":"吴景健"},{"date":"2026-03-28","dayOfWeek":"周六","type":"saturday","staff":"孙强"},{"date":"2026-03-30","dayOfWeek":"周一","type":"weekday","staff":"谢东波"},{"date":"2026-03-31","dayOfWeek":"周二","type":"weekday","staff":"施化吉"},{"date":"2026-04-01","dayOfWeek":"周三","type":"weekday","staff":"陈萌"},{"date":"2026-04-02","dayOfWeek":"周四","type":"weekday","staff":"高智强"},{"date":"2026-04-03","dayOfWeek":"周五","type":"weekday","staff":""},{"date":"2026-04-07","dayOfWeek":"周二","type":"weekday","staff":"谢东波"},{"date":"2026-04-08","dayOfWeek":"周三","type":"weekday","staff":"施化吉"},{"date":"2026-04-09","dayOfWeek":"周四","type":"weekday","staff":"陈萌"},{"date":"2026-04-10","dayOfWeek":"周五","type":"weekday","staff":"高智强"},{"date":"2026-04-11","dayOfWeek":"周六","type":"saturday","staff":"孙强"},{"date":"2026-04-13","dayOfWeek":"周一","type":"weekday","staff":"高超"},{"date":"2026-04-14","dayOfWeek":"周二","type":"weekday","staff":"谢东波"},{"date":"2026-04-15","dayOfWeek":"周三","type":"weekday","staff":"施化吉"},{"date":"2026-04-16","dayOfWeek":"周四","type":"weekday","staff":""},{"date":"2026-04-17","dayOfWeek":"周五","type":"weekday","staff":"高智强"},{"date":"2026-04-18","dayOfWeek":"周六","type":"saturday","staff":"陈萌"},{"date":"2026-04-20","dayOfWeek":"周一","type":"weekday","staff":"陈萌"},{"date":"2026-04-21","dayOfWeek":"周二","type":"weekday","staff":""},{"date":"2026-04-22","dayOfWeek":"周三","type":"weekday","staff":"高超"},{"date":"2026-04-23","dayOfWeek":"周四","type":"weekday","staff":""},{"date":"2026-04-24","dayOfWeek":"周五","type":"weekday","staff":"姚景天"},{"date":"2026-04-25","dayOfWeek":"周六","type":"saturday","staff":"高智强"},{"date":"2026-04-27","dayOfWeek":"周一","type":"weekday","staff":"谢东波"},{"date":"2026-04-28","dayOfWeek":"周二","type":"weekday","staff":""},{"date":"2026-04-29","dayOfWeek":"周三","type":"weekday","staff":"施化吉"},{"date":"2026-04-30","dayOfWeek":"周四","type":"weekday","staff":""},{"date":"2026-05-06","dayOfWeek":"周三","type":"weekday","staff":"高超"},{"date":"2026-05-07","dayOfWeek":"周四","type":"weekday","staff":""},{"date":"2026-05-08","dayOfWeek":"周五","type":"weekday","staff":"陈萌"},{"date":"2026-05-09","dayOfWeek":"周六","type":"weekday","staff":"高智强"},{"date":"2026-05-11","dayOfWeek":"周一","type":"weekday","staff":"姚景天"},{"date":"2026-05-12","dayOfWeek":"周二","type":"weekday","staff":""},{"date":"2026-05-13","dayOfWeek":"周三","type":"weekday","staff":"谢东波"},{"date":"2026-05-14","dayOfWeek":"周四","type":"weekday","staff":""},{"date":"2026-05-15","dayOfWeek":"周五","type":"weekday","staff":"施化吉"},{"date":"2026-05-16","dayOfWeek":"周六","type":"saturday","staff":"孙强"},{"date":"2026-05-18","dayOfWeek":"周一","type":"weekday","staff":"高超"},{"date":"2026-05-19","dayOfWeek":"周二","type":"weekday","staff":""},{"date":"2026-05-20","dayOfWeek":"周三","type":"weekday","staff":"施化吉"},{"date":"2026-05-21","dayOfWeek":"周四","type":"weekday","staff":""},{"date":"2026-05-22","dayOfWeek":"周五","type":"weekday","staff":"高智强"},{"date":"2026-05-23","dayOfWeek":"周六","type":"saturday","staff":"姚景天"},{"date":"2026-05-25","dayOfWeek":"周一","type":"weekday","staff":"谢东波"},{"date":"2026-05-26","dayOfWeek":"周二","type":"weekday","staff":""},{"date":"2026-05-27","dayOfWeek":"周三","type":"weekday","staff":"陈萌"},{"date":"2026-05-28","dayOfWeek":"周四","type":"weekday","staff":""},{"date":"2026-05-29","dayOfWeek":"周五","type":"weekday","staff":"陈萌"},{"date":"2026-05-30","dayOfWeek":"周六","type":"saturday","staff":"高超"},{"date":"2026-06-01","dayOfWeek":"周一","type":"weekday","staff":"高智强"},{"date":"2026-06-02","dayOfWeek":"周二","type":"weekday","staff":"高超"},{"date":"2026-06-03","dayOfWeek":"周三","type":"weekday","staff":"施化吉"},{"date":"2026-06-04","dayOfWeek":"周四","type":"weekday","staff":"陈萌"},{"date":"2026-06-05","dayOfWeek":"周五","type":"weekday","staff":"姚景天"},{"date":"2026-06-06","dayOfWeek":"周六","type":"saturday","staff":"谢东波"},{"date":"2026-06-08","dayOfWeek":"周一","type":"weekday","staff":"高超"},{"date":"2026-06-09","dayOfWeek":"周二","type":"weekday","staff":"高智强"},{"date":"2026-06-10","dayOfWeek":"周三","type":"weekday","staff":"姚景天"},{"date":"2026-06-11","dayOfWeek":"周四","type":"weekday","staff":"陈萌"},{"date":"2026-06-12","dayOfWeek":"周五","type":"weekday","staff":"谢东波"},{"date":"2026-06-13","dayOfWeek":"周六","type":"saturday","staff":"施化吉"},{"date":"2026-06-15","dayOfWeek":"周一","type":"weekday","staff":"高智强"},{"date":"2026-06-16","dayOfWeek":"周二","type":"weekday","staff":"高超"},{"date":"2026-06-17","dayOfWeek":"周三","type":"weekday","staff":"施化吉"},{"date":"2026-06-18","dayOfWeek":"周四","type":"weekday","staff":""},{"date":"2026-06-22","dayOfWeek":"周一","type":"weekday","staff":"姚景天"},{"date":"2026-06-23","dayOfWeek":"周二","type":"weekday","staff":"谢东波"},{"date":"2026-06-24","dayOfWeek":"周三","type":"weekday","staff":"陈萌"},{"date":"2026-06-25","dayOfWeek":"周四","type":"weekday","staff":"高智强"},{"date":"2026-06-26","dayOfWeek":"周五","type":"weekday","staff":"高超"},{"date":"2026-06-27","dayOfWeek":"周六","type":"saturday","staff":"孙强"},{"date":"2026-06-29","dayOfWeek":"周一","type":"weekday","staff":"施化吉"},{"date":"2026-06-30","dayOfWeek":"周二","type":"weekday","staff":"姚景天"}];
+        const makeupDates = [];
+        let currentViewYear = new Date().getFullYear();
+        let currentViewMonth = new Date().getMonth();
+
+        function isWorkday(date) { return date.getDay() >= 1 && date.getDay() <= 5; }
+        function isSaturday(date) { return date.getDay() === 6; }
+        function isMakeupDate(date) { return makeupDates.includes(date.toISOString().split('T')[0]); }
+        function isLegalHoliday(date) {
+            const holidays = ['01-01','01-02','01-03','02-15','02-16','02-17','02-18','02-19','02-20','02-21','02-22','02-23','04-04','04-05','04-06','05-01','05-02','05-03','05-04','05-05','06-19','06-20','06-21','09-25','09-26','09-27','10-01','10-02','10-03','10-04','10-05','10-06','10-07'];
+            const month = String(date.getMonth()+1).padStart(2,'0');
+            const day = String(date.getDate()).padStart(2,'0');
+            return holidays.includes(month+'-'+day);
+        }
+        function isLegalMakeupWork(date) {
+            const days = ['2026-02-14','2026-02-28','2026-05-09','2026-10-10'];
+            return days.includes(date.toISOString().split('T')[0]);
+        }
+        function getDateType(date) {
+            if (isLegalHoliday(date)) return 'holiday';
+            if (isLegalMakeupWork(date)) return 'weekday';
+            if (isMakeupDate(date)) return 'weekday';
+            if (isSaturday(date)) return 'saturday';
+            if (isWorkday(date)) return 'weekday';
+            return 'holiday';
+        }
+        function renderSchedule() {
+            const container = document.getElementById('scheduleContainer');
+            if (!schedule.length) { container.innerHTML = '<div class="empty-state">暂无排班数据</div>'; return; }
+            const scheduleMap = {};
+            schedule.forEach(item => { scheduleMap[item.date] = item; });
+            const year = currentViewYear;
+            const month = currentViewMonth;
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month+1, 0);
+            const prevMonthLastDay = new Date(year, month, 0).getDate();
+            const firstDayOfWeek = firstDay.getDay();
+            const calendarHTML = [];
+            const prevYear = month === 0 ? year-1 : year;
+            const prevMonth = month === 0 ? 11 : month-1;
+            const nextYear = month === 11 ? year+1 : year;
+            const nextMonth = month === 11 ? 0 : month+1;
+            calendarHTML.push(`
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <div class="calendar-nav">
+                            <button class="nav-btn" onclick="changeMonth(${prevYear},${prevMonth})">‹</button>
+                            <h2>${year}年${month+1}月</h2>
+                            <button class="nav-btn" onclick="changeMonth(${nextYear},${nextMonth})">›</button>
+                        </div>
+                        <div class="calendar-legend">
+                            <span class="legend-item"><span class="legend-color" style="background:#e8f5e9"></span> 工作日</span>
+                            <span class="legend-item"><span class="legend-color" style="background:#fff3e0"></span> 周六</span>
+                            <span class="legend-item"><span class="legend-color" style="background:#ffebee"></span> 节假日</span>
+                            <span class="legend-item"><span class="legend-color" style="background:#e3f2fd"></span> 调休</span>
+                        </div>
+                    </div>
+                    <table class="calendar-table">
+                        <thead><tr><th>日</th><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th></tr></thead>
+                        <tbody>
+            `);
+            let date = 1;
+            for (let i = 0; i < 6; i++) {
+                calendarHTML.push('<tr>');
+                for (let j = 0; j < 7; j++) {
+                    if (i === 0 && j < firstDayOfWeek) {
+                        calendarHTML.push(`<td class="other-month">${prevMonthLastDay - firstDayOfWeek + j + 1}</td>`);
+                    } else if (date > lastDay.getDate()) {
+                        calendarHTML.push(`<td class="other-month">${date - lastDay.getDate()}</td>`);
+                    } else {
+                        const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(date).padStart(2,'0')}`;
+                        const item = scheduleMap[dateStr];
+                        const d = new Date(dateStr);
+                        const type = getDateType(d);
+                        let cellClass = type === 'holiday' ? 'holiday' : type === 'saturday' ? 'saturday' : type === 'weekday' ? 'weekday' : 'sunday';
+                        if (isLegalMakeupWork(d)) cellClass = 'makeup-work';
+                        const isHoliday = isLegalHoliday(d);
+                        const isMakeup = isLegalMakeupWork(d);
+                        const staffName = item && item.staff ? item.staff : '';
+                        const isDutyDay = type === 'weekday' || type === 'saturday';
+                        calendarHTML.push(`
+                            <td class="${cellClass}">
+                                <div class="date-number">${date}</div>
+                                ${isHoliday ? '<div class="holiday-mark">节</div>' : ''}
+                                ${isMakeup ? '<div class="makeup-mark">班</div>' : ''}
+                                ${isDutyDay && staffName ? '<div class="staff-name-large">'+staffName+'</div>' : ''}
+                            </td>
+                        `);
+                        date++;
+                    }
+                }
+                calendarHTML.push('</tr>');
+                if (date > lastDay.getDate()) break;
+            }
+            calendarHTML.push('</tbody></table></div>');
+            container.innerHTML = calendarHTML.join('');
+        }
+        function changeMonth(year, month) { currentViewYear = year; currentViewMonth = month; renderSchedule(); }
+        function updateStats() {
+            const container = document.getElementById('statsContainer');
+            if (!staffList.length || !schedule.length) { container.innerHTML = ''; return; }
+            const stats = {};
+            staffList.forEach(name => { stats[name] = { weekday:0, saturday:0, total:0, hours:0 }; });
+            schedule.forEach(item => {
+                if (item.staff && stats[item.staff]) {
+                    stats[item.staff][item.type]++;
+                    stats[item.staff].total++;
+                    stats[item.staff].hours += item.type === 'weekday' ? 2 : 6;
+                }
+            });
+            container.innerHTML = `
+                <div class="stats-card">
+                    <h3>📈 工作日值班（2小时/次）</h3>
+                    <table class="stats-table">
+                        ${staffList.map(n => '<tr><td class="name">'+n+'</td><td class="count weekday-color">'+stats[n].weekday+'次</td></tr>').join('')}
+                    </table>
+                </div>
+                <div class="stats-card">
+                    <h3>📊 周六值班（6小时/次）</h3>
+                    <table class="stats-table">
+                        ${staffList.map(n => '<tr><td class="name">'+n+'</td><td class="count saturday-color">'+stats[n].saturday+'次</td></tr>').join('')}
+                    </table>
+                </div>
+                <div class="stats-card">
+                    <h3>📉 总值班统计</h3>
+                    <table class="stats-table">
+                        ${staffList.map(n => '<tr><td class="name">'+n+'</td><td class="count">'+stats[n].total+'次('+stats[n].hours+'小时)</td></tr>').join('')}
+                    </table>
+                </div>
+            `;
+        }
+        renderSchedule();
+        updateStats();
+    </script>
+</body>
+</html>
